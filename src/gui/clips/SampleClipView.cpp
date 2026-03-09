@@ -21,7 +21,7 @@
  * Boston, MA 02110-1301 USA.
  *
  */
- 
+
 #include "SampleClipView.h"
 
 #include <QApplication>
@@ -45,332 +45,332 @@ namespace lmms::gui
 {
 
 
-SampleClipView::SampleClipView( SampleClip * _clip, TrackView * _tv ) :
+	SampleClipView::SampleClipView( SampleClip * _clip, TrackView * _tv ) :
 	ClipView( _clip, _tv ),
 	m_clip( _clip ),
 	m_paintPixmap(),
 	m_paintPixmapXPosition(0)
-{
-	// update UI and tooltip
-	updateSample();
+	{
+		// update UI and tooltip
+		updateSample();
 
-	// track future changes of SampleClip
-	connect(m_clip, SIGNAL(sampleChanged()), this, SLOT(updateSample()));
+		// track future changes of SampleClip
+		connect(m_clip, SIGNAL(sampleChanged()), this, SLOT(updateSample()));
 
-	connect(m_clip, SIGNAL(wasReversed()), this, SLOT(update()));
+		connect(m_clip, SIGNAL(wasReversed()), this, SLOT(update()));
 
-	setStyle( QApplication::style() );
-}
+		setStyle( QApplication::style() );
+	}
 
-void SampleClipView::updateSample()
-{
-	update();
+	void SampleClipView::updateSample()
+	{
+		update();
 
-	m_sampleThumbnail = SampleThumbnail{m_clip->m_sample};
+		m_sampleThumbnail = SampleThumbnail{m_clip->m_sample};
 
-	// set tooltip to filename so that user can see what sample this
-	// sample-clip contains
-	setToolTip(
-		!m_clip->m_sample.sampleFile().isEmpty()
+		// set tooltip to filename so that user can see what sample this
+		// sample-clip contains
+		setToolTip(
+			!m_clip->m_sample.sampleFile().isEmpty()
 			? PathUtil::toAbsolute(m_clip->m_sample.sampleFile())
 			: tr("Double-click to open sample")
-	);
-}
-
-
-
-
-void SampleClipView::constructContextMenu(QMenu* cm)
-{
-	cm->addSeparator();
-
-	/*contextMenu.addAction( embed::getIconPixmap( "record" ),
-				tr( "Set/clear record" ),
-						m_clip, SLOT(toggleRecord()));*/
-
-	cm->addAction(
-		embed::getIconPixmap("flip_x"),
-		tr("Reverse sample"),
-		this,
-		SLOT(reverseSample())
-	);
-
-	cm->addAction(
-		embed::getIconPixmap("automation_ghost_note"),
-		tr("Set as ghost in automation editor"),
-		this,
-		SLOT(setAutomationGhost())
-	);
-
-}
-
-
-
-
-void SampleClipView::dragEnterEvent( QDragEnterEvent * _dee )
-{
-	if( StringPairDrag::processDragEnterEvent( _dee,
-					"samplefile,sampledata" ) == false )
-	{
-		ClipView::dragEnterEvent( _dee );
+		);
 	}
-}
 
 
 
 
-
-
-void SampleClipView::dropEvent( QDropEvent * _de )
-{
-	if( StringPairDrag::decodeKey( _de ) == "samplefile" )
+	void SampleClipView::constructContextMenu(QMenu* cm)
 	{
-		m_clip->setSampleFile( StringPairDrag::decodeValue( _de ) );
-		_de->accept();
+		cm->addSeparator();
+
+		/*contextMenu.addAction( embed::getIconPixmap( "record" ),
+		 *				tr( "Set/clear record" ),
+		 *						m_clip, SLOT(toggleRecord()));*/
+
+		cm->addAction(
+			embed::getIconPixmap("flip_x"),
+					  tr("Reverse sample"),
+					  this,
+				SLOT(reverseSample())
+		);
+
+		cm->addAction(
+			embed::getIconPixmap("automation_ghost_note"),
+					  tr("Set as ghost in automation editor"),
+					  this,
+				SLOT(setAutomationGhost())
+		);
+
 	}
-	else if( StringPairDrag::decodeKey( _de ) == "sampledata" )
+
+
+
+
+	void SampleClipView::dragEnterEvent( QDragEnterEvent * _dee )
 	{
-		m_clip->setSampleBuffer(SampleBuffer::fromBase64(StringPairDrag::decodeValue(_de)));
-		m_clip->updateLength();
-		update();
-		_de->accept();
+		if( StringPairDrag::processDragEnterEvent( _dee,
+			"samplefile,sampledata" ) == false )
+		{
+			ClipView::dragEnterEvent( _dee );
+		}
 	}
-	else
+
+
+
+
+
+
+	void SampleClipView::dropEvent( QDropEvent * _de )
 	{
-		ClipView::dropEvent( _de );
+		if( StringPairDrag::decodeKey( _de ) == "samplefile" )
+		{
+			m_clip->setSampleFile( StringPairDrag::decodeValue( _de ) );
+			_de->accept();
+		}
+		else if( StringPairDrag::decodeKey( _de ) == "sampledata" )
+		{
+			m_clip->setSampleBuffer(SampleLoader::createBufferFromBase64(StringPairDrag::decodeValue(_de)));
+			m_clip->updateLength();
+			update();
+			_de->accept();
+		}
+		else
+		{
+			ClipView::dropEvent( _de );
+		}
 	}
-}
 
 
 
 
-void SampleClipView::mousePressEvent( QMouseEvent * _me )
-{
-	if( _me->button() == Qt::LeftButton &&
-		_me->modifiers() & Qt::ControlModifier &&
-		_me->modifiers() & Qt::ShiftModifier )
+	void SampleClipView::mousePressEvent( QMouseEvent * _me )
 	{
-		m_clip->toggleRecord();
+		if( _me->button() == Qt::LeftButton &&
+			_me->modifiers() & Qt::ControlModifier &&
+			_me->modifiers() & Qt::ShiftModifier )
+		{
+			m_clip->toggleRecord();
+		}
+		else
+		{
+			if( _me->button() == Qt::MiddleButton && _me->modifiers() == Qt::ControlModifier )
+			{
+				auto sClip = dynamic_cast<SampleClip*>(getClip());
+				if( sClip )
+				{
+					sClip->updateTrackClips();
+				}
+			}
+			ClipView::mousePressEvent( _me );
+		}
 	}
-	else
+
+
+
+
+	void SampleClipView::mouseReleaseEvent(QMouseEvent *_me)
 	{
-		if( _me->button() == Qt::MiddleButton && _me->modifiers() == Qt::ControlModifier )
+		if( _me->button() == Qt::MiddleButton && !_me->modifiers() )
 		{
 			auto sClip = dynamic_cast<SampleClip*>(getClip());
 			if( sClip )
 			{
-				sClip->updateTrackClips();
+				sClip->playbackPositionChanged();
 			}
 		}
-		ClipView::mousePressEvent( _me );
+		ClipView::mouseReleaseEvent( _me );
 	}
-}
 
 
 
 
-void SampleClipView::mouseReleaseEvent(QMouseEvent *_me)
-{
-	if( _me->button() == Qt::MiddleButton && !_me->modifiers() )
+	void SampleClipView::mouseDoubleClickEvent( QMouseEvent * )
 	{
-		auto sClip = dynamic_cast<SampleClip*>(getClip());
-		if( sClip )
+		if (m_trackView->trackContainerView()->knifeMode()) { return; }
+
+		const QString selectedAudioFile = SampleLoader::openAudioFile();
+
+		if (selectedAudioFile.isEmpty()) { return; }
+
+		if (!m_clip->hasSampleFileLoaded(selectedAudioFile))
 		{
-			sClip->playbackPositionChanged();
+			auto sampleBuffer = SampleLoader::createBufferFromFile(selectedAudioFile);
+			if (sampleBuffer != SampleBuffer::emptyBuffer())
+			{
+				m_clip->setSampleBuffer(sampleBuffer);
+			}
 		}
+		m_clip->updateLength();
 	}
-	ClipView::mouseReleaseEvent( _me );
-}
 
 
 
 
-void SampleClipView::mouseDoubleClickEvent( QMouseEvent * )
-{
-	if (m_trackView->trackContainerView()->knifeMode()) { return; }
-
-	const QString selectedAudioFile = FileDialog::openAudioFile();
-
-	if (selectedAudioFile.isEmpty()) { return; }
-	
-	if (!m_clip->hasSampleFileLoaded(selectedAudioFile))
+	void SampleClipView::paintEvent( QPaintEvent * pe )
 	{
-		auto sampleBuffer = SampleBuffer::fromFile(selectedAudioFile);
-		if (sampleBuffer != SampleBuffer::emptyBuffer())
+		QPainter painter( this );
+
+		if( !needsUpdate() )
 		{
-			m_clip->setSampleBuffer(sampleBuffer);
+			painter.drawPixmap(m_paintPixmapXPosition, 0, m_paintPixmap);
+			return;
 		}
-	}
-	m_clip->updateLength();
-}
 
+		setNeedsUpdate( false );
 
+		const auto trackViewWidth = getTrackView()->rect().width();
 
+		// Use the clip's height to avoid artifacts when rendering while something else is overlaying the clip.
+		const auto viewPortRect = QRect(0, 0, trackViewWidth * 2, rect().height());
 
-void SampleClipView::paintEvent( QPaintEvent * pe )
-{
-	QPainter painter( this );
+		m_paintPixmapXPosition = std::max(0, pe->rect().x() - trackViewWidth);
 
-	if( !needsUpdate() )
-	{
-		painter.drawPixmap(m_paintPixmapXPosition, 0, m_paintPixmap);
-		return;
-	}
+		if (m_paintPixmap.isNull() || m_paintPixmap.size() != viewPortRect.size())
+		{
+			m_paintPixmap = QPixmap(viewPortRect.size());
+		}
 
-	setNeedsUpdate( false );
+		QPainter p( &m_paintPixmap );
 
-	const auto trackViewWidth = getTrackView()->rect().width();
+		bool muted = m_clip->getTrack()->isMuted() || m_clip->isMuted();
+		bool selected = isSelected();
 
-	// Use the clip's height to avoid artifacts when rendering while something else is overlaying the clip.
-	const auto viewPortRect = QRect(0, 0, trackViewWidth * 2, rect().height());
+		QLinearGradient lingrad(0, 0, 0, height());
+		QColor c = painter.background().color();
+		if (muted) { c = c.darker(150); }
+		if (selected) { c = c.darker(150); }
 
-	m_paintPixmapXPosition = std::max(0, pe->rect().x() - trackViewWidth);
+		lingrad.setColorAt( 1, c.darker( 300 ) );
+		lingrad.setColorAt( 0, c );
 
-	if (m_paintPixmap.isNull() || m_paintPixmap.size() != viewPortRect.size())
-	{
-		m_paintPixmap = QPixmap(viewPortRect.size());
-	}
+		// paint a black rectangle under the clip to prevent glitches with transparent backgrounds
+		p.fillRect( rect(), QColor( 0, 0, 0 ) );
 
-	QPainter p( &m_paintPixmap );
+		if( gradient() )
+		{
+			p.fillRect( rect(), lingrad );
+		}
+		else
+		{
+			p.fillRect( rect(), c );
+		}
 
-	bool muted = m_clip->getTrack()->isMuted() || m_clip->isMuted();
-	bool selected = isSelected();
+		auto clipColor = m_clip->color().value_or(m_clip->getTrack()->color().value_or(painter.pen().brush().color()));
 
-	QLinearGradient lingrad(0, 0, 0, height());
-	QColor c = painter.background().color();
-	if (muted) { c = c.darker(150); }
-	if (selected) { c = c.darker(150); }
+		p.setPen(clipColor);
 
-	lingrad.setColorAt( 1, c.darker( 300 ) );
-	lingrad.setColorAt( 0, c );
+		if (muted)
+		{
+			QColor penColor = p.pen().brush().color();
+			penColor.setHsv(penColor.hsvHue(), penColor.hsvSaturation() / 4, penColor.value());
+			p.setPen(penColor.darker(250));
+		}
+		if (selected)
+		{
+			p.setPen(p.pen().brush().color().darker(150));
+		}
 
-	// paint a black rectangle under the clip to prevent glitches with transparent backgrounds
-	p.fillRect( rect(), QColor( 0, 0, 0 ) );
+		const int spacing = BORDER_WIDTH + 1;
+		const float ppb = fixedClips() ?
+		( parentWidget()->width() - 2 * BORDER_WIDTH )
+		/ (float) m_clip->length().getBar() :
+		pixelsPerBar();
 
-	if( gradient() )
-	{
-		p.fillRect( rect(), lingrad );
-	}
-	else
-	{
-		p.fillRect( rect(), c );
-	}
+		float nom = Engine::getSong()->getTimeSigModel().getNumerator();
+		float den = Engine::getSong()->getTimeSigModel().getDenominator();
+		float ticksPerBar = DefaultTicksPerBar * nom / den;
+		float offsetStart = m_clip->startTimeOffset() / ticksPerBar * pixelsPerBar();
+		float sampleLength = m_clip->sampleLength() * ppb / ticksPerBar;
 
-	auto clipColor = m_clip->color().value_or(m_clip->getTrack()->color().value_or(painter.pen().brush().color()));
+		const auto& sample = m_clip->m_sample;
 
-	p.setPen(clipColor);
+		const auto sampleRextX = static_cast<int>(offsetStart) - m_paintPixmapXPosition;
 
-	if (muted)
-	{
-		QColor penColor = p.pen().brush().color();
-		penColor.setHsv(penColor.hsvHue(), penColor.hsvSaturation() / 4, penColor.value());
-		p.setPen(penColor.darker(250));
-	}
-	if (selected)
-	{
-		p.setPen(p.pen().brush().color().darker(150));
-	}
+		if (sample.sampleSize() > 0)
+		{
+			const auto param = SampleThumbnail::VisualizeParameters{
+				.sampleRect = QRect(sampleRextX, spacing, sampleLength, height() - spacing),
+				.viewportRect = viewPortRect,
+				.amplification = sample.amplification(),
+				.reversed = sample.reversed()
+			};
 
-	const int spacing = BORDER_WIDTH + 1;
-	const float ppb = fixedClips() ?
-			( parentWidget()->width() - 2 * BORDER_WIDTH )
-					/ (float) m_clip->length().getBar() :
-								pixelsPerBar();
+			m_sampleThumbnail.visualize(param, p);
+		}
 
-	float nom = Engine::getSong()->getTimeSigModel().getNumerator();
-	float den = Engine::getSong()->getTimeSigModel().getDenominator();
-	float ticksPerBar = DefaultTicksPerBar * nom / den;
-	float offsetStart = m_clip->startTimeOffset() / ticksPerBar * pixelsPerBar();
-	float sampleLength = m_clip->sampleLength() * ppb / ticksPerBar;
+		QString name = PathUtil::cleanName(m_clip->m_sample.sampleFile());
+		paintTextLabel(name, p);
 
-	const auto& sample = m_clip->m_sample;
+		// disable antialiasing for borders, since its not needed
+		p.setRenderHint( QPainter::Antialiasing, false );
 
-	const auto sampleRextX = static_cast<int>(offsetStart) - m_paintPixmapXPosition;
+		// inner border
+		p.setPen( c.lighter( 135 ) );
+		p.drawRect(
+			-m_paintPixmapXPosition + 1,
+			 1,
+			 rect().right() - BORDER_WIDTH,
+				   rect().bottom() - BORDER_WIDTH );
 
-	if (sample.sampleSize() > 0)
-	{
-		const auto param = SampleThumbnail::VisualizeParameters{
-			.sampleRect = QRect(sampleRextX, spacing, sampleLength, height() - spacing),
-			.viewportRect = viewPortRect,
-			.amplification = sample.amplification(),
-			.reversed = sample.reversed()
-		};
+		// outer border
+		p.setPen( c.darker( 200 ) );
+		p.drawRect(-m_paintPixmapXPosition, 0, rect().right(), rect().bottom());
 
-		m_sampleThumbnail.visualize(param, p);
-	}
+		// draw the 'muted' pixmap only if the clip was manually muted
+		if( m_clip->isMuted() )
+		{
+			const int spacing = BORDER_WIDTH;
+			const int size = 14;
+			p.drawPixmap( spacing, height() - ( size + spacing ),
+						  embed::getIconPixmap( "muted", size, size ) );
+		}
 
-	QString name = PathUtil::cleanName(m_clip->m_sample.sampleFile());
-	paintTextLabel(name, p);
+		if ( m_marker )
+		{
+			p.setPen(markerColor());
+			p.drawLine(m_markerPos, rect().bottom(), m_markerPos, rect().top());
+		}
+		// recording sample tracks is not possible at the moment
 
-	// disable antialiasing for borders, since its not needed
-	p.setRenderHint( QPainter::Antialiasing, false );
-
-	// inner border
-	p.setPen( c.lighter( 135 ) );
-	p.drawRect(
-		-m_paintPixmapXPosition + 1,
-		1,
-		rect().right() - BORDER_WIDTH,
-		rect().bottom() - BORDER_WIDTH );
-
-	// outer border
-	p.setPen( c.darker( 200 ) );
-	p.drawRect(-m_paintPixmapXPosition, 0, rect().right(), rect().bottom());
-
-	// draw the 'muted' pixmap only if the clip was manually muted
-	if( m_clip->isMuted() )
-	{
-		const int spacing = BORDER_WIDTH;
-		const int size = 14;
-		p.drawPixmap( spacing, height() - ( size + spacing ),
-			embed::getIconPixmap( "muted", size, size ) );
-	}
-
-	if ( m_marker )
-	{
-		p.setPen(markerColor());
-		p.drawLine(m_markerPos, rect().bottom(), m_markerPos, rect().top());
-	}
-	// recording sample tracks is not possible at the moment
-
-	/* if( m_clip->isRecord() )
-	{
-		p.setFont( pointSize<7>( p.font() ) );
-
-		p.setPen( textShadowColor() );
-		p.drawText( 10, p.fontMetrics().height()+1, "Rec" );
-		p.setPen( textColor() );
-		p.drawText( 9, p.fontMetrics().height(), "Rec" );
-
-		p.setBrush( QBrush( textColor() ) );
-		p.drawEllipse( 4, 5, 4, 4 );
+		/* if( m_clip->isRecord() )
+		 *	{
+		 *		p.setFont( pointSize<7>( p.font() ) );
+		 *
+		 *		p.setPen( textShadowColor() );
+		 *		p.drawText( 10, p.fontMetrics().height()+1, "Rec" );
+		 *		p.setPen( textColor() );
+		 *		p.drawText( 9, p.fontMetrics().height(), "Rec" );
+		 *
+		 *		p.setBrush( QBrush( textColor() ) );
+		 *		p.drawEllipse( 4, 5, 4, 4 );
 	}*/
 
-	p.end();
+		p.end();
 
-	painter.drawPixmap(m_paintPixmapXPosition, 0, m_paintPixmap);
-}
-
-
-
-
-void SampleClipView::reverseSample()
-{
-	m_clip->m_sample.setReversed(!m_clip->m_sample.reversed());
-	m_clip->setStartTimeOffset(m_clip->length() - m_clip->startTimeOffset() - m_clip->sampleLength());
-	Engine::getSong()->setModified();
-	update();
-}
+		painter.drawPixmap(m_paintPixmapXPosition, 0, m_paintPixmap);
+	}
 
 
 
-void SampleClipView::setAutomationGhost()
-{
-	auto aEditor = gui::getGUI()->automationEditor();
-	aEditor->setGhostSample(m_clip);
-	aEditor->parentWidget()->show();
-	aEditor->show();
-	aEditor->setFocus();
-}
+
+	void SampleClipView::reverseSample()
+	{
+		m_clip->m_sample.setReversed(!m_clip->m_sample.reversed());
+		m_clip->setStartTimeOffset(m_clip->length() - m_clip->startTimeOffset() - m_clip->sampleLength());
+		Engine::getSong()->setModified();
+		update();
+	}
+
+
+
+	void SampleClipView::setAutomationGhost()
+	{
+		auto aEditor = gui::getGUI()->automationEditor();
+		aEditor->setGhostSample(m_clip);
+		aEditor->parentWidget()->show();
+		aEditor->show();
+		aEditor->setFocus();
+	}
 
 } // namespace lmms::gui
