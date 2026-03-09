@@ -2218,6 +2218,10 @@ void PianoRoll::setKnifeAction()
 		m_knifeDown = false;
 		setCursor(Qt::ArrowCursor);
 		update();
+
+		TextFloat::displayMessage(tr("Knife Tool"),
+			tr("Click and drag over notes to cut along a line\nHold Shift to automatically remove short ends"),
+			embed::getIconPixmap("edit_knife"), 4000);
 	}
 }
 
@@ -4101,6 +4105,8 @@ void PianoRoll::wheelEvent(QWheelEvent * we )
 					// same volume
 					showVolTextFloat(nv[0]->getVolume(), pos, 1000);
 				}
+				// Emit MIDI clip has changed
+				m_midiClip->dataChanged();
 			}
 			else if( m_noteEditMode == NoteEditMode::Panning )
 			{
@@ -4888,7 +4894,9 @@ void PianoRoll::updatePositionAccompany()
 		}
 		if( (int) pos > 0 )
 		{
-			m_timeLine->timeline()->setTicks(pos);
+			// Passing false to prevent any `positionJumped` signals from being emitted, since this movement is supposed
+			// to be smoothly tracking the Song's timeline, not the from user forcefully dragging it.
+			m_timeLine->timeline()->setTicks(pos, false);
 			autoScroll( pos );
 		}
 	}
