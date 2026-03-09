@@ -34,6 +34,7 @@
 #include "embed.h"
 #include "PathUtil.h"
 #include "SampleClip.h"
+#include "SampleLoader.h"
 #include "SampleThumbnail.h"
 #include "Song.h"
 #include "StringPairDrag.h"
